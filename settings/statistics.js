@@ -1,15 +1,19 @@
 FullScreenMario.prototype.settings.statistics = {
     "prefix": "FullScreenMario",
     "doMakeContainer": true,
+    "displayChanges": {
+        "Infinity": "INF"
+    },
     "containers": [
         ["table", {
-            "id": "data_display",
+            "id": "dataDisplay",
             "style": {
                 "position": "absolute",
                 "top": 0,
                 "width": "100%",
+                "color": "white",
                 "fontSize": "21px",
-                "textTransform": "uppercase"
+                "textTransform": "uppercase",
             }
         }],
         ["tr", {
@@ -22,7 +26,6 @@ FullScreenMario.prototype.settings.statistics = {
     "defaults": {
         "element": "td"
     },
-    "separator": "<br />",
     "values": {
         "power": {
             "valueDefault": 1,
@@ -46,8 +49,10 @@ FullScreenMario.prototype.settings.statistics = {
             "hasElement": true,
             "minimum": 0,
             "triggers": {
-                100: function (EightBitter) {
-                    EightBitter.AudioPlayer.playThemePrefixed("Hurry");
+                "100": function (EightBitter) {
+                    if (!EightBitter.MapScreener.notime) {
+                        EightBitter.AudioPlayer.playThemePrefixed("Hurry");
+                    }
                 }
             },
             "onMinimum": function (EightBitter) {
@@ -63,12 +68,11 @@ FullScreenMario.prototype.settings.statistics = {
             "hasElement": true,
             "modularity": 100,
             "onModular": function (EightBitter) {
-                EightBitter.player.gainLife();
+                EightBitter.gainLife();
             }
         },
         "lives": {
             "valueDefault": 3,
-            "storeLocally": true,
             "hasElement": true
         },
         "luigi": {

@@ -1,12 +1,29 @@
 FullScreenMario.prototype.settings.ui = {
     "globalName": "FSM",
+    "styleSheet": {
+        ".FullScreenMario": {
+            "color": "white"
+        },
+        "@font-face": {
+            "font-family": "'Press Start'",
+            "src": "url('Fonts/pressstart2p-webfont.eot')",
+            "src": [
+                    "url('Fonts/pressstart2p-webfont.eot?#iefix') format('embedded-opentype')",
+                    "url('Fonts/pressstart2p-webfont.woff') format('woff')",
+                    "url('Fonts/pressstart2p-webfont.ttf') format('truetype')",
+                    "url('Fonts/pressstart2p-webfont.svg') format('svg')"
+                ].join(", "),
+            "font-weight": "normal",
+            "font-style": "normal"
+        }
+    },
     "helpSettings": {
         "globalNameAlias": "{%%%%GAME%%%%}",
         "openings": [
             "Hi, thanks for playing FullScreenMario! It looks like you're using the console.",
-            "There's not really any way to stop you from messing around so if you'd like to know the common cheats, enter '{%%%%GAME%%%%}.UserWrapper.displayHelpOptions()' here.",
+            "There's not really any way to stop you from messing around so if you'd like to know the common cheats, enter `{%%%%GAME%%%%}.UserWrapper.displayHelpOptions()` here.",
             "If you'd like, go ahead and look around the source code. There are a few surprises you might have fun with... ;)",
-            "http://www.github.com/DiogenesTheCynic/FullScreenMario"
+            "http://www.github.com/DiogenesTheCynic/FullScreenMario-JSON"
         ],
         "options": {
             "Map": [{
@@ -50,7 +67,7 @@ FullScreenMario.prototype.settings.ui = {
                 "usage": "{%%%%GAME%%%%}.ObjectMaker.getProperties();"
             }, {
                 "title": "{%%%%GAME%%%%}.GroupHolder.get*******Group",
-                "description": "Retrieves the appropriate group of Things being manipulated. Choices are 'Text', 'Character', 'Solid', and 'Scenery'",
+                "description": "Retrieves the appropriate group of Things being manipulated. Choices are 'Text', 'Character', 'Solid', and 'Scenery'.",
                 "usage": "{%%%%GAME%%%%}.get*******Group();",
                 "examples": [{
                     "code": "{%%%%GAME%%%%}.GroupHolder.getCharacterGroup();",
@@ -205,9 +222,10 @@ FullScreenMario.prototype.settings.ui = {
                     },
                     "update": function (GameStarter, value) {
                         GameStarter.GamesRunner.setSpeed(
-                            Number(value.replace('x', 0))
+                            Number(value.replace('x', ''))
                         );
-                    }
+                    },
+                    "storeLocally": true
                 },
                 {
                     "title": "View Mode",
@@ -220,24 +238,26 @@ FullScreenMario.prototype.settings.ui = {
                         return ["60fps", "30fps"];
                     },
                     "source": function (GameStarter) {
-                        return 1 / GameStarter.PixelDrawer.getFramerateSkip() * 60;
+                        return (1 / GameStarter.PixelDrawer.getFramerateSkip() * 60) + "fps";
                     },
                     "update": function (GameStarter, value) {
                         var numeric = Number(value.replace("fps", ""));
                         GameStarter.PixelDrawer.setFramerateSkip(1 / numeric * 60);
-                    }
+                    },
+                    "storeLocally": true
                 },
                 {
                     "title": "Tilt Controls",
                     "type": "Boolean",
+                    "storeLocally": true,
                     "source": function (GameStarter) {
-                        return GameStarter.MapScreener.allowDeviceMotion;
+                        return false;
                     },
                     "enable": function (GameStarter) {
-                        GameStarter.MapScreener.allowDeviceMotion = true;
+                        window.ondevicemotion = GameStarter.InputWriter.makePipe("ondevicemotion", "type");
                     },
                     "disable": function (GameStarter) {
-                        GameStarter.MapScreener.allowDeviceMotion = false;
+                        window.ondevicemotion = undefined;
                     }
                 }
             ],
@@ -257,8 +277,13 @@ FullScreenMario.prototype.settings.ui = {
                     return {
                         "title": title[0].toUpperCase() + title.substr(1),
                         "type": "Keys",
+                        "storeLocally": true,
                         "source": function (GameStarter) {
-                            return GameStarter.InputWriter.getAliasAsKeyStrings(title);
+                            return GameStarter.InputWriter
+                                .getAliasAsKeyStrings(title)
+                                .map(function (string) {
+                                    return string.toLowerCase();
+                                });
                         },
                         "callback": function (GameStarter, valueOld, valueNew) {
                             GameStarter.InputWriter.switchAliasValues(
@@ -317,6 +342,7 @@ FullScreenMario.prototype.settings.ui = {
                                 randomizer.value = getNewSeed();
                             }
                             
+                            GameStarter.LevelEditor.disable();
                             GameStarter.NumberMaker.resetFromSeed(randomizer.value);
                             GameStarter.setMap("Random");
                             
@@ -340,6 +366,7 @@ FullScreenMario.prototype.settings.ui = {
                 })()
             },
             "callback": function (GameStarter, schema, button, event) {
+                GameStarter.LevelEditor.disable();
                 GameStarter.setMap(button.getAttribute("value") || button.textContent);
             }
         }

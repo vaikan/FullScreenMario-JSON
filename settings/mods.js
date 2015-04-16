@@ -1,6 +1,6 @@
 FullScreenMario.prototype.settings.mods = {
     "storeLocally": true,
-    "prefix": "FullScreenMarioMods",
+    "prefix": "FullScreenMario::Mods::",
     "mods": [
         {
             "name": "Bouncy Bounce",
@@ -35,6 +35,59 @@ FullScreenMario.prototype.settings.mods = {
                 }
             },
         }, {
+            "name": "Dark is the Night",
+            "description": "The night is darkest before the dawn, but I promise you: the dawn is coming.",
+            "author": {
+                "name": "Josh Goldberg",
+                "email": "josh@fullscreenmario.com"
+            },
+            "enabled": false,
+            "events": {
+                "onModEnable": function (mod) {
+                    var area = this.MapsHandler.getArea();
+                    
+                    if (!area) {
+                        return;
+                    }
+                    
+                    mod.events.onPreSetLocation.call(this, mod);
+                },
+                "onPreSetLocation": function (mod) {
+                    var area = this.MapsHandler.getArea();
+                    
+                    area.setting += " Castle Alt2";
+                    area.setBackground(area);
+                    
+                    this.PixelDrawer.setBackground(area.background);
+                    this.GroupHolder.callOnAll(
+                        undefined,
+                        this.PixelDrawer.setThingSprite
+                    );
+                    
+                    this.ModAttacher.fireEvent(
+                        "onSetLocation",
+                        this.MapsHandler.getLocation()
+                    );
+                },
+                "onModDisable": function (mod) {
+                    var area = this.MapsHandler.getArea();
+                    
+                    area.setting = area.setting.replace(" Castle Alt2", "");
+                    area.setBackground(area);
+                    
+                    this.PixelDrawer.setBackground(area.background);
+                    this.GroupHolder.callOnAll(
+                        undefined,
+                        this.PixelDrawer.setThingSprite
+                    );
+                    
+                    this.ModAttacher.fireEvent(
+                        "onSetLocation",
+                        this.MapsHandler.getLocation()
+                    );
+                }
+            }
+        }, {
             "name": "Earthquake!",
             "description": "Mario landing causes everything else to jump.",
             "author": {
@@ -46,13 +99,14 @@ FullScreenMario.prototype.settings.mods = {
                 "onPlayerLanding": (function () {
                     var shiftLevels = [2, 1.5, 1, .5, 0, -.5, -1, -1.5, -2],
                         shiftCount = 0,
-                        shiftAll = function (EightBitter, solids, scenery, characters) {
+                        shiftAll = function (EightBitter, texts, solids, scenery, characters) {
                             var dy = shiftLevels[shiftCount];
                             
                             if (dy < 0) {
                                 EightBitter.shiftVert(EightBitter.player, dy);
                             }
                             
+                            EightBitter.shiftThings(texts, 0, dy);
                             EightBitter.shiftThings(solids, 0, dy);
                             EightBitter.shiftThings(scenery, 0, dy);
                             EightBitter.shiftThings(characters, 0, dy);
@@ -65,9 +119,8 @@ FullScreenMario.prototype.settings.mods = {
                         };
                     
                     return function (mod) {
-                        var characters = this.GroupHolder.getCharacterGroup(),
-                            player = this.player,
-                            character, i;
+                        var player = this.player,
+                            characters, solids, scenery, texts, character, i;
                     
                         // Don't trigger during cutscenes or small landings
                         if (
@@ -79,9 +132,19 @@ FullScreenMario.prototype.settings.mods = {
                         
                         this.AudioPlayer.play("Bump");
                         
+                        texts = this.GroupHolder.getTextGroup().slice();
+                        scenery = this.GroupHolder.getSceneryGroup().slice();
+                        solids = this.GroupHolder.getSolidGroup().slice();
+                        characters = this.GroupHolder.getCharacterGroup().slice();
+                        
                         for (i = 0; i < characters.length; i += 1) {
                             character = characters[i];
-                            if (character.player || character.nofall || !character.resting) {
+                            if (
+                                character.player 
+                                || character.nofall 
+                                || !character.resting 
+                                || character.grounded
+                            ) {
                                 continue;
                             }
                             
@@ -94,9 +157,7 @@ FullScreenMario.prototype.settings.mods = {
                         if (shiftCount === 0) {
                             this.TimeHandler.addEventInterval(
                                 shiftAll, 1, Infinity, this,
-                                this.GroupHolder.getSolidGroup().slice(),
-                                this.GroupHolder.getSceneryGroup().slice(),
-                                this.GroupHolder.getCharacterGroup().slice()
+                                texts, solids, scenery, characters
                             );
                         }
                     }
@@ -119,11 +180,11 @@ FullScreenMario.prototype.settings.mods = {
                 "onModDisable": function (mod) {
                     var area = this.MapsHandler.getArea();
                     
-                    area.background = mod.settings.backgroundOld;
+                    area.setBackground(area);
                     this.PixelDrawer.setBackground(area.background);
                 },
                 "onSetLocation": (function (gradients) {
-                    return function (mod) { 
+                    return function (mod) {
                         var area = this.MapsHandler.getArea(),
                             setting = area.setting,
                             context = this.canvas.getContext("2d"),
@@ -148,22 +209,19 @@ FullScreenMario.prototype.settings.mods = {
                             background.addColorStop(i, gradient[i]);
                         }
                         
-                        mod.settings.backgroundOld = area.background;
-                        
                         area.background = background;
-                        
                         this.PixelDrawer.setBackground(area.background);
                     };
                 })({
                     "Underwater": {
-                        "0": "#357749",
-                        "1": "#2149CC"
+                        ".21": "#5CC7FC",
+                        "1": "#CCCCAA"
                     },
                     "Night": {
                         "0": "#000000",
-                        "0.49": "#000028",
-                        "0.84": "#210028",
-                        "1": "#210021"
+                        "0.49": "#000035",
+                        "0.84": "#280035",
+                        "1": "#350035"
                     },
                     "Underworld": {
                         "0.35": "#000000",
@@ -173,11 +231,16 @@ FullScreenMario.prototype.settings.mods = {
                         "0.21": "#000000",
                         "1": "#700000"
                     },
-					"Womb": {
-						"0.21": "#703521",
-						".7": "#770014",
+                    "Shrooms": {
+                        ".21": "#9C94EC",
+                        ".49": "#A7AAEE",
+                        "1": "#FFCC77"
+                    },
+                    "Womb": {
+                        "0.21": "#703521",
+                        ".7": "#770014",
                         "1": "#AA0035"
-					},
+                    },
                     "default": {
                         ".21": "#5C94FC",
                         ".49": "#77AAFF",
@@ -212,7 +275,7 @@ FullScreenMario.prototype.settings.mods = {
                         thing.EightBitter.shiftHoriz(thing, thing.EightBitter.unitsize * 4);
                     }
                     
-                    if (thing.grouptype === "Character") {
+                    if (thing.groupType === "Character") {
                         thing.speed *= 1.4;
                     }
                 },
@@ -315,6 +378,42 @@ FullScreenMario.prototype.settings.mods = {
                 "multiplier": 14
             }
         }, {
+            "name": "Infinite Lives",
+            "description": "Mario never really dies.",
+            "author": {
+                "name": "Josh Goldberg",
+                "email": "josh@fullscreenmario.com"
+            },
+            "enabled": false,
+            "events": {
+                "onModEnable": function (mod) {
+                    var proto = this.ObjectMaker.getFunction("Area").prototype,
+                        stats = this.settings.statistics.values.lives;
+                    
+                    mod.settings.onPlayerDeathOld = proto.onPlayerDeath;
+                    proto.onPlayerDeath = this.mapEntranceRespawn;
+                    
+                    mod.settings.livesOld = this.StatsHolder.get("lives");
+                    mod.settings.statsOld = stats;
+                    stats.valueDefault = Infinity;
+                    this.StatsHolder.set("lives", Infinity);
+                },
+                "onModDisable": function (mod) {
+                    var proto = this.ObjectMaker.getFunction("Area").prototype,
+                        stats = this.settings.statistics.values.lives;
+                    
+                    proto.onPlayerDeath = mod.settings.onPlayerDeathOld;
+                    
+                    stats.valueDefault = mod.settings.statsOld.valueDefault;
+                    this.StatsHolder.set("lives", mod.settings.livesOld);
+                }
+            },
+            "settings": {
+                "onPlayerDeathOld": undefined,
+                "statsOld": undefined,
+                "livesOld": undefined
+            }
+        }, {
             "name": "Invincibility",
             "description": "Mario is constantly given star power.",
             "author": {
@@ -329,10 +428,19 @@ FullScreenMario.prototype.settings.mods = {
                     }
                 },
                 "onModDisable": function () {
-                    this.playerStarDown(this.player);
+                    if (this.player) {
+                        this.playerStarDown(this.player);
+                    }
                 },
                 "onSetLocation": function () {
-                    this.playerStarUp(this.player, Infinity);
+                    if (this.player) {
+                        this.playerStarUp(this.player, Infinity);
+                    }
+                },
+                "onPlayerRespawn": function () {
+                    if (this.player) {
+                        this.playerStarUp(this.player, Infinity);
+                    }
                 }
             }
         }, {
@@ -345,10 +453,10 @@ FullScreenMario.prototype.settings.mods = {
             "enabled": false,
             "events": {
                 "onModEnable": function () {
-                    this.ObjectMaker.getFunction("Cloud").prototype.parallax = .7;
+                    this.ObjectMaker.getFunction("Cloud").prototype.parallaxHoriz = .7;
                 },
                 "onModDisable": function () {
-                    this.ObjectMaker.getFunction("Cloud").prototype.parallax = undefined;
+                    this.ObjectMaker.getFunction("Cloud").prototype.parallaxHoriz = undefined;
                 }
             }
         }, {
@@ -385,6 +493,11 @@ FullScreenMario.prototype.settings.mods = {
                     if (this.player) {
                         this.player.title = "Luigi";
                         this.PixelDrawer.setThingSprite(this.player);
+                        
+                        this.ThingHitter.cacheHitCheckType(
+                            this.player.title,
+                            this.player.groupType
+                        );
                     }
                 },
                 "onModDisable": function () {
@@ -441,6 +554,72 @@ FullScreenMario.prototype.settings.mods = {
                 "y": undefined
             }
         }, {
+            "name": "Palette Swap",
+            "description": "Swaps the color palette around randomly for each area.",
+            "author": {
+                "name": "Josh Goldberg",
+                "email": "josh@fullscreenmario.com"
+            },
+            "enabled": false,
+            "events": {
+                "onModEnable": function (mod) {
+                    mod.settings.paletteDefaultOld = this.settings.sprites.paletteDefault;
+                    
+                    if (this.MapsHandler.getMapName()) {
+                        mod.events.onPreSetLocation.call(this, mod);
+                    }
+                },
+                "onModDisable": function (mod) {
+                    this.settings.sprites.paletteDefault = mod.settings.paletteDefaultOld;
+                    
+                    mod.resetVisuals(this);
+                    mod.resetThingSprites(this);
+                },
+                "onPreSetLocation": function (mod, location) {
+                    this.settings.sprites.paletteDefault = mod.shufflePalette(
+                        Array.prototype.slice.call(mod.settings.paletteDefaultOld)
+                    );
+                    
+                    mod.resetVisuals(this);
+                    mod.resetThingSprites(this);
+                }
+            },
+            "settings": {
+                "paletteOld": undefined
+            },
+            "resetVisuals": function (EightBitter) {
+                EightBitter.resetPixelRender(EightBitter, EightBitter.customs);
+                EightBitter.resetPixelDrawer(EightBitter, EightBitter.customs);
+                EightBitter.PixelDrawer.setCanvas(EightBitter.canvas);
+                EightBitter.PixelDrawer.setThingArrays([
+                    EightBitter.GroupHolder.getSceneryGroup(),
+                    EightBitter.GroupHolder.getSolidGroup(),
+                    EightBitter.GroupHolder.getCharacterGroup(),
+                    EightBitter.GroupHolder.getTextGroup()
+                ]);
+                EightBitter.PixelDrawer.setBackground(
+                    EightBitter.MapsHandler.getArea().background
+                );
+            },
+            "resetThingSprites": function (EightBitter) {
+                EightBitter.GroupHolder.callOnAll(undefined, function (thing) {
+                    thing.numSprites = undefined;
+                    // EightBitter.PixelDrawer.setThingSprite(thing);
+                });
+            },
+            "shufflePalette": function shufflePalette(array) {
+                var i, j, temp;
+                
+                for (i = 0; i < array.length - 1; i += 1) {
+                    j = Math.floor(Math.random() * i);
+                    temp = array[i + 1];
+                    array[i + 1] = array[j + 1];
+                    array[j + 1] = temp;
+                }
+                
+                return array;
+            }
+        }, {
             "name": "QCount",
             "description": "QQQQQQQ",
             "author": {
@@ -460,7 +639,7 @@ FullScreenMario.prototype.settings.mods = {
                         
                         if (mod.settings.levels[mod.settings.qcount]) {
                             var level = mod.settings.levels[mod.settings.qcount];
-                            mod.settings.event = EightBitter.TimeHandler.addEventInterval(function () {
+                            mod.settings.events.push(EightBitter.TimeHandler.addEventInterval(function () {
                                 if (charactersEightBitter.length < 210) {
                                     var num = Math.floor(Math.random() * level.length),
                                         lul = EightBitter.ObjectMaker.make.apply(EightBitter, level[num]);
@@ -478,16 +657,17 @@ FullScreenMario.prototype.settings.mods = {
                                         88 * Math.random() * EightBitter.unitsize
                                     );
                                 }
-                            }, 7, Infinity);
+                            }, 7, Infinity));
                         }
                     });
                     this.InputWriter.addAliasValues("q", [81]);
                 },
                 "onModDisable": function (mod) {
                     mod.settings.qcount = 0;
-                    this.TimeHandler.cancelEvent(mod.settings.event);
-                    this.InputWriter.cancelEvent("onkeydown", 81, true);
-                    this.InputWriter.cancelEvent("onkeydown", "q", true);
+                    mod.settings.events.forEach(this.TimeHandler.cancelEvent);
+                    mod.settings.events.length = 0;
+                    this.InputWriter.removeEvent("onkeydown", 81, undefined);
+                    this.InputWriter.removeEvent("onkeydown", "q", undefined);
                 },
                 "onSetLocation": function (mod) {
                     mod.settings.qcount = 0;
@@ -496,6 +676,7 @@ FullScreenMario.prototype.settings.mods = {
             "settings": {
                 "qcount": 0,
                 "characters": [],
+                "events": [],
                 "levels": {
                     "7": [ ["Goomba"] ],
                     "14": [ 
@@ -503,10 +684,10 @@ FullScreenMario.prototype.settings.mods = {
                         ["Koopa", { "smart": true }],
                         ["Koopa", { "jumping": true }],
                         ["Koopa", { "smart": true, "jumping": true }],
-                        // ["Beetle"],
-                        // ["HammerBro"],
-                        // ["Lakitu"],
-                        // ["Blooper"]
+                        ["Beetle"],
+                        ["HammerBro"],
+                        ["Lakitu"],
+                        ["Blooper"]
                     ],
                     "21": [ ["Bowser"] ]
                 }
@@ -555,4 +736,4 @@ FullScreenMario.prototype.settings.mods = {
             }
         }
     ]
-}
+};
