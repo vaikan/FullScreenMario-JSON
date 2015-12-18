@@ -2,18 +2,19 @@ var GroupHoldr;
 (function (GroupHoldr_1) {
     "use strict";
     /**
-     * A general utility to keep Arrays and/or Objects by key names within a
-     * container so they can be referenced automatically by those keys. Automation
-     * is made easier by more abstraction, such as by automatically generated add,
-     * remove, etc. methods.
+     * A general storage container for values in keyed Arrays and/or Objects.
+     * Manipulation utlities are provided for adding, removing, switching, and
+     * applying methods to values.
      */
     var GroupHoldr = (function () {
         /**
-         * @param {IGroupHoldrSettings} settings
+         * Initializes a new instance of the GroupHoldr class.
+         *
+         * @param settings   Settings to be used for initialization.
          */
         function GroupHoldr(settings) {
             if (typeof settings === "undefined") {
-                throw new Error("No settings given to GroupHoldr.");
+                throw new Error("No settings object given to GroupHoldr.");
             }
             if (typeof settings.groupNames === "undefined") {
                 throw new Error("No groupNames given to GroupHoldr.");
@@ -35,27 +36,26 @@ var GroupHoldr;
         /* Simple gets
         */
         /**
-         * @return {Object} The Object with Object<Function>s for each action
-         *                  available on groups.
+         * @returns The mapping of operation types to each group's Functions.
          */
         GroupHoldr.prototype.getFunctions = function () {
             return this.functions;
         };
         /**
-         * @return {Object} The Object storing each of the internal groups.
+         * @returns The stored object groups, keyed by name.
          */
         GroupHoldr.prototype.getGroups = function () {
             return this.groups;
         };
         /**
-         * @param {String} name
-         * @return {Mixed} The group of the given name.
+         * @param name   The name of the group to retrieve.
+         * @returns The group stored under the given name.
          */
         GroupHoldr.prototype.getGroup = function (name) {
             return this.groups[name];
         };
         /**
-         * @return {String[]} An Array containing each of the group names.
+         * @returns Names of the stored object groups.
          */
         GroupHoldr.prototype.getGroupNames = function () {
             return this.groupNames;
@@ -63,58 +63,35 @@ var GroupHoldr;
         /* Group/ordering manipulators
         */
         /**
-         * Deletes a given object from a group by calling Array.splice on
-         * the result of Array.indexOf
+         * Switches an object from one group to another.
          *
-         * @param {String} groupName   The string name of the group to delete an
-         *                              object from.
-         * @param {Mixed} value   The object to be deleted from the group.
+         * @param value   The value being moved from one group to another.
+         * @param groupNameOld   The name of the group to move out of.
+         * @param groupNameNew   The name of the group to move into.
+         * @param [keyOld]   What key the value used to be under (required if
+         *                   the old group is an Object).
+         * @param [keyNew]   Optionally, what key the value will now be under
+         *                   (required if the new group is an Object).
          */
-        GroupHoldr.prototype.deleteObject = function (groupName, value) {
-            var group = this.groups[groupName];
-            group.splice(group.indexOf(value), 1);
+        GroupHoldr.prototype.switchMemberGroup = function (value, groupNameOld, groupNameNew, keyOld, keyNew) {
+            var groupOld = this.groups[groupNameOld];
+            if (groupOld.constructor === Array) {
+                this.functions.delete[groupNameOld](value, keyOld);
+            }
+            else {
+                this.functions.delete[groupNameOld](keyOld);
+            }
+            this.functions.add[groupNameNew](value, keyNew);
         };
         /**
-         * Deletes a given index from a group by calling Array.splice.
-         *
-         * @param {String} groupName   The string name of the group to delete an
-         *                              object from.
-         * @param {Number} index   The index to be deleted from the group.
-         * @param {Number} [max]   How many elements to delete after that index (by
-         *                         default or if falsy, just the first 1).
-         */
-        GroupHoldr.prototype.deleteIndex = function (groupName, index, max) {
-            if (max === void 0) { max = 1; }
-            var group = this.groups[groupName];
-            group.splice(index, max);
-        };
-        /**
-         * Switches an object from groupOld to groupNew by removing it from the
-         * old group and adding it to the new. If the new group uses an associative
-         * array, a key should be passed in (which defaults to undefined).
-         *
-         * @param {Mixed} value   The value to be moved from one group to another.
-         * @param {String} groupOld   The string name of the value's old group.
-         * @param {String} groupNew   The string name of the value's new group.
-         * @param {String} [keyNew]   A key for the value to be placed in the new
-         *                           group, required only if the group contains an
-         *                           associative array.
-         */
-        GroupHoldr.prototype.switchObjectGroup = function (value, groupOld, groupNew, keyNew) {
-            if (keyNew === void 0) { keyNew = undefined; }
-            this.deleteObject(groupOld, value);
-            this.functions.add[groupNew](value, keyNew);
-        };
-        /**
-         * Calls a function for each group, with that group as the first argument.
+         * Calls a Function for each group, with that group as the first argument.
          * Extra arguments may be passed in an array after scope and func, as in
          * Function.apply's standard.
          *
-         * @param {Mixed} scope   An optional scope to call this from (if falsy,
-         *                        defaults to this).
-         * @param {Function} func   A function to apply to each group.
-         * @param {Array} [args]   An optional array of arguments to pass to the
-         *                         function after each group.
+         * @param scope   An optional scope to call this from (if falsy, defaults
+         *                to the calling GroupHoldr).
+         * @param func   A Function to apply to each group.
+         * @param [args]   Optionally, arguments to pass in after each group.
          */
         GroupHoldr.prototype.applyAll = function (scope, func, args) {
             if (args === void 0) { args = undefined; }
@@ -138,11 +115,10 @@ var GroupHoldr;
          * Calls a function for each member of each group. Extra arguments may be
          * passed in an array after scope and func, as in Function.apply's standard.
          *
-         * @param {Mixed} scope   An optional scope to call this from (if falsy,
-         *                        defaults to this).
-         * @param {Function} func   A function to apply to each group.
-         * @param {Array} [args]   An optional array of arguments to pass to the
-         *                         function after each group.
+         * @param scope   An optional scope to call this from (if falsy, defaults
+         *                to the calling GroupHoldr).
+         * @param func   A Function to apply to each group.
+         * @param [args]   Optionally, arguments to pass in after each group.
          */
         GroupHoldr.prototype.applyOnAll = function (scope, func, args) {
             if (args === void 0) { args = undefined; }
@@ -175,13 +151,13 @@ var GroupHoldr;
             }
         };
         /**
-         * Calls a function for each group, with that group as the first argument.
+         * Calls a Function for each group, with that group as the first argument.
          * Extra arguments may be passed after scope and func natively, as in
          * Function.call's standard.
          *
-         * @param {Mixed} [scope]   An optional scope to call this from (if falsy,
-         *                          defaults to this).
-         * @param {Function} func   A function to apply to each group.
+         * @param scope   An optional scope to call this from (if falsy,
+         *                defaults to this).
+         * @param func   A Function to apply to each group.
          */
         GroupHoldr.prototype.callAll = function (scope, func) {
             var args = Array.prototype.slice.call(arguments, 1), i;
@@ -197,9 +173,9 @@ var GroupHoldr;
          * Calls a function for each member of each group. Extra arguments may be
          * passed after scope and func natively, as in Function.call's standard.
          *
-         * @param {Mixed} [scope]   An optional scope to call this from (if falsy,
-         *                          defaults to this).
-         * @param {Function} func   A function to apply to each group member.
+         * @param scope   An optional scope to call this from (if falsy,
+         *                defaults to this).
+         * @param func   A Function to apply to each group member.
          */
         GroupHoldr.prototype.callOnAll = function (scope, func) {
             var args = Array.prototype.slice.call(arguments, 1), group, i, j;
@@ -239,20 +215,17 @@ var GroupHoldr;
         /* Core setup logic
         */
         /**
-         * Meaty function to reset, given an array of names an object of types
-         * Any pre-existing functions are cleared, and new ones are added as
-         * member objects and to {functions}.
+         * Meaty function to reset, given an Array of names and an object of
+         * types. Any pre-existing Functions are cleared, and new ones are added
+         * as member objects and to this.functions.
          *
-         * @param {String[]} names   An array of names of groupings to be made
-         * @param {Mixed} types   An associative array of the function types of
-         *                        the names given in names. This may also be taken
-         *                        in as a String, to be converted to an Object.
+         * @param names   An array of names of groupings to be made
+         * @param types   An mapping of the function types of
+         *                the names given in names. This may also be taken
+         *                in as a String, to be converted to an Object.
          */
         GroupHoldr.prototype.setGroupNames = function (names, types) {
             var scope = this, typeFunc, typeName;
-            if (!(names instanceof Array)) {
-                throw new Error("groupNames is not an Array");
-            }
             // If there already were group names, clear them
             if (this.groupNames) {
                 this.clearFunctions();
@@ -279,7 +252,7 @@ var GroupHoldr;
             }
             // Create the containers, and set the modifying functions
             this.setGroups();
-            this.setFunctions();
+            this.createFunctions();
         };
         /**
          * Removes any pre-existing "set", "get", etc. functions.
@@ -303,8 +276,8 @@ var GroupHoldr;
             });
         };
         /**
-         * Resets groups to an empty object, and fills it with a new groupType for
-         * each name in groupNames
+         * Resets groups to an empty Object, and fills it with a new groupType for
+         * each name in groupNames.
          */
         GroupHoldr.prototype.setGroups = function () {
             var scope = this;
@@ -314,10 +287,9 @@ var GroupHoldr;
             });
         };
         /**
-         * Calls the function setters for each name in groupNames
-         * @remarks Those are: createFunction<XYZ>: "Set", "Get", "Add", "Del"
+         * Calls the Function creators for each name in groupNames.
          */
-        GroupHoldr.prototype.setFunctions = function () {
+        GroupHoldr.prototype.createFunctions = function () {
             var groupName, i;
             for (i = 0; i < this.groupNames.length; i += 1) {
                 groupName = this.groupNames[i];
@@ -332,50 +304,50 @@ var GroupHoldr;
         /* Function generators
         */
         /**
-         * Creates a setGroup function under this and functions.setGroup.
+         * Creates a setGroup Function under this and functions.setGroup.
          *
-         * @param {String} name   The name of the group, from groupNames.
+         * @param name   The name of the group, from groupNames.
          */
         GroupHoldr.prototype.createFunctionSetGroup = function (name) {
             var scope = this;
             /**
              * Sets the value of the group referenced by the name.
              *
-             * @param {Mixed} value   The new value for the group, which should be
-             *                        the same type as the group (Array or Object).
+             * @param value   The new value for the group, which should be
+             *                the same type as the group (Array or Object).
              */
             this.functions.setGroup[name] = this["set" + name + "Group"] = function (value) {
                 scope.groups[name] = value;
             };
         };
         /**
-         * Creates a getGroup function under this and functions.getGroup.
+         * Creates a getGroup Function under this and functions.getGroup.
          *
-         * @param {String} name   The name of the group, from groupNames.
+         * @param name   The name of the group, from groupNames.
          */
         GroupHoldr.prototype.createFunctionGetGroup = function (name) {
             var scope = this;
             /**
-             * @param {String} key   The String key that references the group.
-             * @return {Mixed}   The group referenced by the given key.
+             * @param key   The String key that references the group.
+             * @returns The group referenced by the given key.
              */
             this.functions.getGroup[name] = this["get" + name + "Group"] = function () {
                 return scope.groups[name];
             };
         };
         /**
-         * Creates a set function under this and functions.set.
+         * Creates a set Function under this and functions.set.
          *
-         * @param {String} name   The name of the group, from groupNames.
+         * @param name   The name of the group, from groupNames.
          */
         GroupHoldr.prototype.createFunctionSet = function (name) {
             /**
              * Sets a value contained within the group.
              *
-             * @param {Mixed} key   The key referencing the value to obtain. This
-             *                      should be a Number if the group is an Array, or
-             *                      a String if the group is an Object.
-             * @param {Mixed} value
+             * @param key   The key referencing the value to obtain. This
+             *              should be a Number if the group is an Array, or
+             *              a String if the group is an Object.
+             * @param value   The value to be contained within the group.
              */
             this.functions.set[name] = this["set" + name] = function (key, value) {
                 if (value === void 0) { value = undefined; }
@@ -385,16 +357,16 @@ var GroupHoldr;
         /**
          * Creates a get<type> function under this and functions.get
          *
-         * @param {String} name   The name of the group, from groupNames
+         * @param name   The name of the group, from groupNames.
          */
         GroupHoldr.prototype.createFunctionGet = function (name) {
             /**
              * Gets the value within a group referenced by the given key.
              *
-             * @param {Mixed} key   The key referencing the value to obtain. This
-             *                      should be a Number if the group is an Array, or
-             *                      a String if the group is an Object.
-             * @return {Mixed} value
+             * @param  key   The key referencing the value to obtain. This
+             *               should be a Number if the group is an Array, or
+             *               a String if the group is an Object.
+             * @param value   The value contained within the group.
              */
             this.functions.get[name] = this["get" + name] = function (key) {
                 return this.groups[name][key];
@@ -403,7 +375,7 @@ var GroupHoldr;
         /**
          * Creates an add function under this and functions.add.
          *
-         * @param {String} name   The name of the group, from groupNames
+         * @param name   The name of the group, from groupNames.
          */
         GroupHoldr.prototype.createFunctionAdd = function (name) {
             var group = this.groups[name];
@@ -411,9 +383,9 @@ var GroupHoldr;
                 /**
                  * Adds a value to the group, referenced by the given key.
                  *
-                 * @param {String} key   The String key to reference the value to be
-                 *                       added.
-                 * @param value
+                 * @param key   The String key to reference the value to be
+                 *              added.
+                 * @param value   The value to be added to the group.
                  */
                 this.functions.add[name] = this["add" + name] = function (value, key) {
                     group[key] = value;
@@ -423,7 +395,7 @@ var GroupHoldr;
                 /**
                  * Adds a value to the group, referenced by the given key.
                  *
-                 * @param {String} value
+                 * @param value   The value to be added to the group.
                  */
                 this.functions.add[name] = this["add" + name] = function (value, key) {
                     if (key !== undefined) {
@@ -436,9 +408,9 @@ var GroupHoldr;
             }
         };
         /**
-         * Creates a del (delete) function under this and functions.delete.
+         * Creates a delete function under this and functions.delete.
          *
-         * @param {String} name   The name of the group, from groupNames
+         * @param name   The name of the group, from groupNames.
          */
         GroupHoldr.prototype.createFunctionDelete = function (name) {
             var group = this.groups[name];
@@ -446,8 +418,8 @@ var GroupHoldr;
                 /**
                  * Deletes a value from the group, referenced by the given key.
                  *
-                 * @param {String} key   The String key to reference the value to be
-                 *                       deleted.
+                 * @param key   The String key to reference the value to be
+                 *              deleted.
                  */
                 this.functions.delete[name] = this["delete" + name] = function (key) {
                     delete group[key];
@@ -457,11 +429,13 @@ var GroupHoldr;
                 /**
                  * Deletes a value from the group, referenced by the given key.
                  *
-                 * @param {Number} key   The String key to reference the value to be
-                 *                       deleted.
+                 * @param value The value to be deleted.
                  */
-                this.functions.delete[name] = this["delete" + name] = function (key) {
-                    group.splice(group.indexOf(key), 1);
+                this.functions.delete[name] = this["delete" + name] = function (value, index) {
+                    if (index === void 0) { index = group.indexOf(value); }
+                    if (index !== -1) {
+                        group.splice(index, 1);
+                    }
                 };
             }
         };
@@ -470,10 +444,8 @@ var GroupHoldr;
         /**
          * Returns the name of a type specified by a string ("Array" or "Object").
          *
-         * @param {String} str   The name of the type. If falsy, defaults to Array
-         * @return {String}
-         * @remarks The type is determined by the str[0]; if it exists and is "o",
-         *          the outcome is "Object", otherwise it's "Array".
+         * @param str   The name of the type. If falsy, defaults to Array
+         * @returns The proper name of the type.
          */
         GroupHoldr.prototype.getTypeName = function (str) {
             if (str && str.charAt && str.charAt(0).toLowerCase() === "o") {
@@ -484,10 +456,8 @@ var GroupHoldr;
         /**
          * Returns function specified by a string (Array or Object).
          *
-         * @param {String} str   The name of the type. If falsy, defaults to Array
-         * @return {Function}
-         * @remarks The type is determined by the str[0]; if it exists and is "o",
-         *          the outcome is Object, otherwise it's Array.
+         * @param str   The name of the type. If falsy, defaults to Array
+         * @returns The class Function of the type.
          */
         GroupHoldr.prototype.getTypeFunction = function (str) {
             if (str && str.charAt && str.charAt(0).toLowerCase() === "o") {

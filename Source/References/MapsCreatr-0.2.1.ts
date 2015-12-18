@@ -391,11 +391,11 @@ module MapsCreatr {
             this.right = this.left + (
                 reference.width
                 || ObjectMaker.getFullPropertiesOf(this.title).width
-                );
+            );
             this.bottom = this.top + (
                 reference.height
                 || ObjectMaker.getFullPropertiesOf(this.title).height
-                );
+            );
 
             if (reference.position) {
                 this.position = reference.position;
@@ -485,23 +485,19 @@ module MapsCreatr {
          */
         constructor(settings: IMapsCreatrSettings) {
             if (!settings) {
-                throw new Error("No settings given to MapsCreatr.");
+                throw new Error("No settings object given to MapsCreatr.");
             }
-
-            // Maps and Things are created using an ObjectMaker factory
             if (!settings.ObjectMaker) {
                 throw new Error("No ObjectMakr given to MapsCreatr.");
             }
-            this.ObjectMaker = settings.ObjectMaker;
-
-            if (typeof this.ObjectMaker.getFullProperties() === "undefined") {
+            if (typeof settings.ObjectMaker.getFullProperties() === "undefined") {
                 throw new Error("MapsCreatr's ObjectMaker must store full properties.");
             }
-
-            // At least one group type name should be defined for PreThing output
             if (!settings.groupTypes) {
                 throw new Error("No groupTypes given to MapsCreatr.");
             }
+
+            this.ObjectMaker = settings.ObjectMaker;
             this.groupTypes = settings.groupTypes;
 
             this.keyGroupType = settings.keyGroupType || "groupType";
@@ -738,7 +734,7 @@ module MapsCreatr {
             reference: any,
             prethings: any,
             area: IMapsCreatrArea | IMapsCreatrAreaRaw,
-            map: IMapsCreatrMap | IMapsCreatrMapRaw): any[]| any {
+            map: IMapsCreatrMap | IMapsCreatrMapRaw): any[] | any {
             // Case: macro (unless it's undefined)
             if (reference.macro) {
                 return this.analyzePreMacro(reference, prethings, area, map);
@@ -763,16 +759,16 @@ module MapsCreatr {
             reference: any,
             prethings: any,
             area: IMapsCreatrArea | IMapsCreatrAreaRaw,
-            map: IMapsCreatrMap | IMapsCreatrMapRaw): any[]| any {
+            map: IMapsCreatrMap | IMapsCreatrMapRaw): any[] | any {
             var macro: any = this.macros[reference.macro],
-                outputs: any[]| any,
+                outputs: any[] | any,
                 i: number;
 
             if (!macro) {
                 console.warn(
                     "A non-existent macro is referenced. It will be ignored:",
                     macro, reference, prethings, area, map
-                    );
+                );
                 return;
             }
 
@@ -809,7 +805,7 @@ module MapsCreatr {
             reference: any,
             prethings: any,
             area: IMapsCreatrArea | IMapsCreatrAreaRaw,
-            map: IMapsCreatrMap | IMapsCreatrMapRaw): any[]| any {
+            map: IMapsCreatrMap | IMapsCreatrMapRaw): any[] | any {
             var title: string = reference.thing,
                 thing: IThing,
                 prething: PreThing;
@@ -826,7 +822,7 @@ module MapsCreatr {
                 console.warn(
                     "A Thing does not contain a " + this.keyGroupType + ". It will be ignored:",
                     prething, "\n", arguments
-                    );
+                );
                 return;
             }
 
@@ -834,7 +830,7 @@ module MapsCreatr {
                 console.warn(
                     "A Thing contains an unknown " + this.keyGroupType + ". It will be ignored:",
                     thing[this.keyGroupType], prething, reference, prethings, area, map
-                    );
+                );
                 return;
             }
 
@@ -864,7 +860,7 @@ module MapsCreatr {
                     reference.collectionName,
                     reference.collectionKey,
                     <IMapsCreatrArea>area
-                    );
+                );
             }
 
             return prething;

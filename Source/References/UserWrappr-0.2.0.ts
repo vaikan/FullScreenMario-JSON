@@ -84,6 +84,7 @@ declare module UserWrappr {
 
         export interface IOptionsButtonsSchema extends ISchema {
             options: IOptionSource | IOptionsButtonSchema[];
+            callback: (GameStarter: IGameStartr, ...args: any[]) => void;
             keyActive?: string;
             assumeInactive?: boolean;
         }
@@ -373,12 +374,34 @@ module UserWrappr {
          * @param {IUserWrapprSettings} settings
          */
         constructor(settings: IUserWrapprSettings) {
-            this.customs = settings.customs || {};
+            if (typeof settings === "undefined") {
+                throw new Error("No settings object given to UserWrappr.");
+            }
+            if (typeof settings.GameStartrConstructor === "undefined") {
+                throw new Error("No GameStartrConstructor given to UserWrappr.");
+            }
+            if (typeof settings.helpSettings === "undefined") {
+                throw new Error("No helpSettings given to UserWrappr.");
+            }
+            if (typeof settings.globalName === "undefined") {
+                throw new Error("No globalName given to UserWrappr.");
+            }
+            if (typeof settings.sizes === "undefined") {
+                throw new Error("No sizes given to UserWrappr.");
+            }
+            if (typeof settings.sizeDefault === "undefined") {
+                throw new Error("No sizeDefault given to UserWrappr.");
+            }
+            if (typeof settings.schemas === "undefined") {
+                throw new Error("No schemas given to UserWrappr.");
+            }
 
-            this.GameStartrConstructor = settings.GameStartrConstructor;
             this.settings = settings;
-            this.helpSettings = this.settings.helpSettings;
+            this.GameStartrConstructor = settings.GameStartrConstructor;
             this.globalName = settings.globalName;
+            this.helpSettings = this.settings.helpSettings;
+
+            this.customs = settings.customs || {};
 
             this.importSizes(settings.sizes);
 
@@ -813,8 +836,8 @@ module UserWrappr {
                 } else {
                     customs.height = window.innerHeight;
                 }
-                // 49px from header, 35px from menus
-                customs.height -= 84;
+                // 49px from header, 77px from menus
+                customs.height -= 126;
             }
 
             return customs;
@@ -1020,14 +1043,38 @@ module UserWrappr {
                 if (element.className === "control") {
                     return element;
                 } else if (!element.parentNode) {
-                    return undefined;
+                    return element;
                 }
 
                 return this.getParentControlDiv(element.parentElement);
             }
 
             /**
-             * Ensures a child's required local storage value is being stored,
+             *
+             */
+            protected ensureLocalStorageButtonValue(
+                child: HTMLDivElement,
+                details: IOptionsButtonSchema,
+                schema: IOptionsButtonsSchema): void {
+                var key: string = schema.title + "::" + details.title,
+                    valueDefault: string = details.source.call(this, this.GameStarter).toString(),
+                    value: string;
+
+                child.setAttribute("localStorageKey", key);
+                this.GameStarter.ItemsHolder.addItem(key, {
+                    "storeLocally": true,
+                    "valueDefault": valueDefault
+                });
+
+                value = this.GameStarter.ItemsHolder.getItem(key);
+                if (value.toString().toLowerCase() === "true") {
+                    details[schema.keyActive || "active"] = true;
+                    schema.callback.call(this, this.GameStarter, schema, child);
+                }
+            }
+
+            /**
+             * Ensures an input's required local storage value is being stored,
              * and adds it to the internal GameStarter.ItemsHolder if not. If it
              * is, and the child's value isn't equal to it, the value is set.
              * 
@@ -1037,7 +1084,7 @@ module UserWrappr {
              *                           and the source Function to get its value.
              * @param {Object} schema   The container schema this child is within.
              */
-            protected ensureLocalStorageValue(childRaw: IChoiceElement | IChoiceElement[], details: IOption, schema: ISchema): void {
+            protected ensureLocalStorageInputValue(childRaw: IChoiceElement | IChoiceElement[], details: IOption, schema: ISchema): void {
                 if (childRaw.constructor === Array) {
                     this.ensureLocalStorageValues(<IInputElement[]>childRaw, details, schema);
                     return;
@@ -1165,7 +1212,9 @@ module UserWrappr {
                             element.setAttribute("option-enabled", "true");
                             element.className = classNameStart + " option-enabled";
                         }
-                    }.bind(undefined, schema, element);
+                    }.bind(this, schema, element);
+
+                    this.ensureLocalStorageButtonValue(element, option, schema);
 
                     if (option[keyActive]) {
                         element.className += " option-enabled";
@@ -1227,7 +1276,7 @@ module UserWrappr {
 
                         child = this.optionTypes[schema.options[i].type].call(this, input, option, schema);
                         if (option.storeLocally) {
-                            this.ensureLocalStorageValue(child, option, schema);
+                            this.ensureLocalStorageInputValue(child, option, schema);
                         }
 
                         table.appendChild(row);
@@ -1464,6 +1513,7 @@ module UserWrappr {
 
             protected createMapSelectorDiv(schema: IOptionsEditorSchema): HTMLDivElement {
                 var expanded: boolean = true,
+                    generatorName: string = "MapsGrid",
                     container: HTMLDivElement = <HTMLDivElement>this.GameStarter.createElement(
                         "div",
                         {
@@ -1479,7 +1529,7 @@ module UserWrappr {
                         {
                             "className": "select-options-holder select-options-editor-maps-holder"
                         }),
-                    mapsIn: HTMLDivElement = this.UserWrapper.getGenerators()["MapsGrid"].generate(
+                    mapsIn: HTMLDivElement = this.UserWrapper.getGenerators()[generatorName].generate(
                         this.GameStarter.proliferate(
                             {
                                 "callback": schema.callback

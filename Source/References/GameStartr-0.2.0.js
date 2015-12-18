@@ -223,12 +223,12 @@ var GameStartr;
         GameStartr.prototype.resetGamesRunner = function (GameStarter, settings) {
             GameStarter.GamesRunner = new GamesRunnr.GamesRunnr(GameStarter.proliferate({
                 "adjustFramerate": true,
-                "interval": 1000 / 60,
                 "scope": GameStarter,
                 "onPlay": GameStarter.onGamePlay.bind(GameStarter, GameStarter),
                 "onPause": GameStarter.onGamePause.bind(GameStarter, GameStarter),
                 "FPSAnalyzer": new FPSAnalyzr.FPSAnalyzr()
             }, GameStarter.settings.runner));
+            GameStarter.FPSAnalyzer = GameStarter.GamesRunner.getFPSAnalyzer();
         };
         /**
          * Sets this.ItemsHolder.
@@ -320,7 +320,10 @@ var GameStartr;
                 "MapScreener": GameStarter.MapScreener,
                 "screenAttributes": GameStarter.settings.maps.screenAttributes,
                 "onSpawn": GameStarter.settings.maps.onSpawn,
-                "onUnspawn": GameStarter.settings.maps.onUnspawn
+                "onUnspawn": GameStarter.settings.maps.onUnspawn,
+                "stretchAdd": GameStarter.settings.maps.stretchAdd,
+                "afterAdd": GameStarter.settings.maps.afterAdd,
+                "commandScope": GameStarter
             });
         };
         /**

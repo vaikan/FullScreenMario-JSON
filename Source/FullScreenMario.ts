@@ -875,7 +875,7 @@ module FullScreenMario {
             for (i = 0; i < things.length; i += 1) {
                 thing = things[i];
 
-                if (thing.right < delx) {
+                if (thing.right < delx && thing.outerok !== 2) {
                     FSM.arrayDeleteThing(thing, things, i);
                     i -= 1;
                 }
@@ -905,7 +905,7 @@ module FullScreenMario {
                     if (solid.movement) {
                         solid.movement(solid);
                     }
-                } else {
+                } else if (!solid.alive || solid.outerok !== 2) {
                     FSM.arrayDeleteThing(solid, solids, i);
                     i -= 1;
                 }
@@ -972,7 +972,8 @@ module FullScreenMario {
                     if (!character.player &&
                         (character.numquads === 0 || character.left > delx) &&
                         (!character.outerok || (
-                            character.right < FSM.MapScreener.width - delx
+                            character.outerok !== 2
+                            && character.right < FSM.MapScreener.width - delx
                         ))) {
                         FSM.arrayDeleteThing(character, characters, i);
                         i -= 1;
@@ -2203,7 +2204,7 @@ module FullScreenMario {
          * @param {Platform} thing
          */
         spawnScalePlatform(thing: IPlatform): void {
-            var collection: any = thing.collection,
+            var collection: any = thing.collection || {},
                 ownKey: string = thing.collectionKey === "platformLeft" ? "Left" : "Right",
                 partnerKey: string = ownKey === "Left" ? "Right" : "Left";
 
@@ -4932,8 +4933,7 @@ module FullScreenMario {
                     }
 
                     thing.FSM.setBottom(thing, other.top);
-                    thing.FSM.GroupHolder.switchObjectGroup(
-                        thing, "Scenery", "Character");
+                    thing.FSM.GroupHolder.switchMemberGroup(thing, "Scenery", "Character");
                     thing.nomove = thing.nocollide = thing.nofall = thing.moveleft = false;
 
                     if (thing.emergeOut) {
@@ -4983,7 +4983,7 @@ module FullScreenMario {
             thing.yvel -= thing.FSM.unitsize;
 
             thing.FSM.switchClass(thing, "still", "anim");
-            thing.FSM.GroupHolder.switchObjectGroup(thing, "Character", "Scenery");
+            thing.FSM.GroupHolder.switchMemberGroup(thing, "Character", "Scenery");
 
             thing.FSM.AudioPlayer.play("Coin");
             thing.FSM.ItemsHolder.increase("coins", 1);
@@ -5090,41 +5090,25 @@ module FullScreenMario {
          * @remarks This could probably be re-written.
          */
         animateThrowingHammer(thing: IHammerBro, count: number): boolean {
-            if (
-                !thing.FSM.isThingAlive(thing)
-                || !thing.FSM.isThingAlive(thing.FSM.player)
-                || thing.right < thing.FSM.unitsize * -32
-            ) {
+            if (!thing.FSM.isThingAlive(thing)) {
                 return true;
             }
 
-            if (count !== 3) {
+            if (
+                thing.FSM.isThingAlive(thing.FSM.player)
+                && thing.right >= thing.FSM.unitsize * -32
+                && count !== 3
+            ) {
                 thing.FSM.switchClass(thing, "thrown", "throwing");
             }
 
             thing.FSM.TimeHandler.addEvent(
-                function (): boolean {
+                function (): void {
                     if (!thing.FSM.isThingAlive(thing)) {
-                        return false;
+                        return;
                     }
 
-                    // Throw the hammer...
-                    if (count !== 3) {
-                        thing.FSM.switchClass(thing, "throwing", "thrown");
-                        thing.FSM.addThing(
-                            ["Hammer", {
-                                "xvel": thing.lookleft
-                                    ? thing.FSM.unitsize / -1.4
-                                    : thing.FSM.unitsize / 1.4,
-                                "yvel": thing.FSM.unitsize * -1.4,
-                                "gravity": thing.FSM.MapScreener.gravity / 2.1
-                            }],
-                            thing.left - thing.FSM.unitsize * 2,
-                            thing.top - thing.FSM.unitsize * 2
-                        );
-                    }
-
-                    // ...and go again
+                    // Schedule the next animateThrowingHammer call
                     if (count > 0) {
                         thing.FSM.TimeHandler.addEvent(
                             thing.FSM.animateThrowingHammer,
@@ -5137,6 +5121,31 @@ module FullScreenMario {
                         );
                         thing.FSM.removeClass(thing, "thrown");
                     }
+
+                    // Don't throw if the player is dead, or this is too far to the left
+                    if (!thing.FSM.isThingAlive(thing.FSM.player) || thing.right < thing.FSM.unitsize * -32) {
+                        thing.FSM.switchClass(thing, "throwing", "thrown");
+                        return;
+                    }
+
+                    // Don't throw in the third iteration (makes a gap in the hammers)
+                    if (count === 3) {
+                        return;
+                    }
+
+                    // Throw by creating a hammer and visually updating
+                    thing.FSM.switchClass(thing, "throwing", "thrown");
+                    thing.FSM.addThing(
+                        ["Hammer", {
+                            "xvel": thing.lookleft
+                                ? thing.FSM.unitsize / -1.4
+                                : thing.FSM.unitsize / 1.4,
+                            "yvel": thing.FSM.unitsize * -1.4,
+                            "gravity": thing.FSM.MapScreener.gravity / 2.1
+                        }],
+                        thing.left - thing.FSM.unitsize * 2,
+                        thing.top - thing.FSM.unitsize * 2
+                    );
                 },
                 14);
 
@@ -5152,14 +5161,11 @@ module FullScreenMario {
          * @param {Bowser} thing
          */
         animateBowserJump(thing: IBowser): boolean {
-            if (!thing.lookleft || !thing.FSM.player) {
+            if (!thing.lookleft || !thing.FSM.player || !thing.FSM.isThingAlive(thing.FSM.player)) {
                 return false;
             }
 
-            if (
-                !thing.FSM.isThingAlive(thing)
-                || !thing.FSM.isThingAlive(thing.FSM.player)
-            ) {
+            if (!thing.FSM.isThingAlive(thing)) {
                 return true;
             }
 
@@ -5191,14 +5197,11 @@ module FullScreenMario {
          * @param {Bowser} thing
          */
         animateBowserFire(thing: IBowser): boolean {
-            if (!thing.lookleft || !thing.lookleft || !thing.FSM.player) {
+            if (!thing.lookleft || !thing.FSM.player || !thing.FSM.isThingAlive(thing.FSM.player)) {
                 return false;
             }
 
-            if (
-                !thing.FSM.isThingAlive(thing)
-                || !thing.FSM.isThingAlive(thing.FSM.player)
-            ) {
+            if (!thing.FSM.isThingAlive(thing)) {
                 return true;
             }
 
@@ -5251,8 +5254,12 @@ module FullScreenMario {
          * @param {Bowser} thing
          */
         animateBowserThrow(thing: IBowser): boolean {
-            if (!thing.lookleft || !thing.FSM.isThingAlive(thing)) {
-                return;
+            if (!thing.lookleft || !thing.FSM.player || !thing.FSM.isThingAlive(thing.FSM.player)) {
+                return false;
+            }
+
+            if (!thing.FSM.isThingAlive(thing)) {
+                return true;
             }
 
             var hammer: IThing = <IThing>thing.FSM.addThing(
@@ -5779,7 +5786,7 @@ module FullScreenMario {
 
             thing.FSM.AudioPlayer.clearTheme();
             thing.FSM.TimeHandler.cancelAllCycles(thing);
-            thing.FSM.GroupHolder.switchObjectGroup(thing, "Character", "Scenery");
+            thing.FSM.GroupHolder.switchMemberGroup(thing, "Character", "Scenery");
         }
 
         /**
@@ -5794,7 +5801,7 @@ module FullScreenMario {
             thing.nocollide = thing.nofall = thing.piping = false;
 
             thing.FSM.AudioPlayer.resumeTheme();
-            thing.FSM.GroupHolder.switchObjectGroup(thing, "Scenery", "Character");
+            thing.FSM.GroupHolder.switchMemberGroup(thing, "Scenery", "Character");
         }
 
         /**
@@ -7364,7 +7371,11 @@ module FullScreenMario {
          */
         cutsceneBowserVictoryBowserFalls(FSM: FullScreenMario, settings: any): void {
             FSM.AudioPlayer.play("Bowser Falls");
-            settings.bowser.nofall = true;
+
+            // Bowser won't exist if the player already killed him with a star or fireballs
+            if (settings.bowser) {
+                settings.bowser.nofall = true;
+            }
         }
 
         /**
@@ -7627,11 +7638,7 @@ module FullScreenMario {
          *                             entrance to (by default, none).
          * @return {Object[]}
          */
-        macroPipe(reference: any,
-            prethings: any[],
-            area: IArea,
-            map: IMap,
-            scope: any): any {
+        macroPipe(reference: any, prethings: any[], area: IArea, map: IMap, scope: any): any {
             var x: number = reference.x || 0,
                 y: number = reference.y || 0,
                 height: number | string = reference.height || 16,
@@ -7641,7 +7648,9 @@ module FullScreenMario {
                         "x": x,
                         "y": y,
                         "width": 16,
-                        "height": reference.height || 8
+                        "height": reference.height === Infinity
+                            ? "Infinity"
+                            : reference.height || 8
                     },
                     reference,
                     true),
@@ -7649,7 +7658,7 @@ module FullScreenMario {
 
             pipe.macro = undefined;
 
-            if (height === "Infinity") {
+            if (height === "Infinity" || height === Infinity) {
                 pipe.height = scope.MapScreener.height;
             } else {
                 pipe.y += height;
@@ -8861,6 +8870,7 @@ module FullScreenMario {
                 "width": reference.width || 8,
                 "height": reference.height || 8,
                 "activate": function (thing: IThing): void {
+                    thing.FSM.AudioPlayer.play("Coin");
                     thing.FSM.MapScreener.sectionPassed = true;
                 }
             };
@@ -8890,6 +8900,7 @@ module FullScreenMario {
                     "width": reference.width || 8,
                     "height": reference.height || 8,
                     "activate": function (thing: IThing): void {
+                        thing.FSM.AudioPlayer.play("Fail");
                         thing.FSM.MapScreener.sectionPassed = false;
                     }
                 }
