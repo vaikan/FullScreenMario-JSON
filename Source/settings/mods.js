@@ -43,7 +43,7 @@ FullScreenMario.FullScreenMario.settings.mods = {
             "enabled": false,
             "events": {
                 "onModEnable": function (mod) {
-                    var area = this.MapsHandler.getArea();
+                    var area = this.AreaSpawner.getArea();
                     
                     if (!area) {
                         return;
@@ -52,7 +52,7 @@ FullScreenMario.FullScreenMario.settings.mods = {
                     mod.events.onPreSetLocation.call(this, mod);
                 },
                 "onPreSetLocation": function (mod) {
-                    var area = this.MapsHandler.getArea();
+                    var area = this.AreaSpawner.getArea();
                     
                     area.setting += " Castle Alt2";
                     area.setBackground(area);
@@ -62,11 +62,11 @@ FullScreenMario.FullScreenMario.settings.mods = {
                     
                     this.ModAttacher.fireEvent(
                         "onSetLocation",
-                        this.MapsHandler.getLocation()
+                        this.AreaSpawner.getLocation()
                     );
                 },
                 "onModDisable": function (mod) {
-                    var area = this.MapsHandler.getArea();
+                    var area = this.AreaSpawner.getArea();
                     
                     area.setting = area.setting.replace(" Castle Alt2", "");
                     area.setBackground(area);
@@ -76,7 +76,7 @@ FullScreenMario.FullScreenMario.settings.mods = {
                     
                     this.ModAttacher.fireEvent(
                         "onSetLocation",
-                        this.MapsHandler.getLocation()
+                        this.AreaSpawner.getLocation()
                     );
                 }
             }
@@ -166,19 +166,19 @@ FullScreenMario.FullScreenMario.settings.mods = {
             "enabled": false,
             "events": {
                 "onModEnable": function (mod) {
-                    if (this.MapsHandler.getMap()) {
+                    if (this.AreaSpawner.getMap()) {
                         mod.events.onSetLocation.call(this, mod);
                     }
                 },
                 "onModDisable": function (mod) {
-                    var area = this.MapsHandler.getArea();
+                    var area = this.AreaSpawner.getArea();
                     
                     area.setBackground(area);
                     this.PixelDrawer.setBackground(area.background);
                 },
                 "onSetLocation": (function (gradients) {
                     return function (mod) {
-                        var area = this.MapsHandler.getArea(),
+                        var area = this.AreaSpawner.getArea(),
                             setting = area.setting,
                             context = this.canvas.getContext("2d"),
                             background = context.createLinearGradient(
@@ -382,7 +382,7 @@ FullScreenMario.FullScreenMario.settings.mods = {
                 "onModEnable": function (mod) {
                     var FSM = FullScreenMario.FullScreenMario.prototype.ensureCorrectCaller(this),
                         proto = FSM.ObjectMaker.getFunction("Area").prototype,
-                        stats = FSM.settings.statistics.values.lives;
+                        stats = FSM.settings.items.values.lives;
                     
                     mod.settings.onPlayerDeathOld = proto.onPlayerDeath;
                     proto.onPlayerDeath = FSM.mapEntranceRespawn;
@@ -395,7 +395,7 @@ FullScreenMario.FullScreenMario.settings.mods = {
                 "onModDisable": function (mod) {
                     var FSM = FullScreenMario.FullScreenMario.prototype.ensureCorrectCaller(this),
                         proto = FSM.ObjectMaker.getFunction("Area").prototype,
-                        stats = FSM.settings.statistics.values.lives;
+                        stats = FSM.settings.items.values.lives;
                     
                     proto.onPlayerDeath = mod.settings.onPlayerDeathOld;
                     
@@ -489,10 +489,7 @@ FullScreenMario.FullScreenMario.settings.mods = {
                         this.player.title = "Luigi";
                         this.PixelDrawer.setThingSprite(this.player);
                         
-                        this.ThingHitter.cacheHitCheckType(
-                            this.player.title,
-                            this.player.groupType
-                        );
+                        this.ThingHitter.cacheChecksForType(this.player.title, this.player.groupType);
                     }
                 },
                 "onModDisable": function () {
@@ -560,7 +557,7 @@ FullScreenMario.FullScreenMario.settings.mods = {
                 "onModEnable": function (mod) {
                     mod.settings.paletteDefaultOld = this.settings.sprites.paletteDefault;
                     
-                    if (this.MapsHandler.getMapName()) {
+                    if (this.AreaSpawner.getMapName()) {
                         mod.events.onPreSetLocation.call(this, mod);
                     }
                 },
@@ -593,7 +590,7 @@ FullScreenMario.FullScreenMario.settings.mods = {
                     FSM.GroupHolder.getTextGroup()
                 ]);
                 FSM.PixelDrawer.setBackground(
-                    FSM.MapsHandler.getArea().background
+                    FSM.AreaSpawner.getArea().background
                 );
             },
             "resetThingSprites": function (FSM) {
